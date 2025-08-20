@@ -1,0 +1,144 @@
+---
+title: "Plot Normalised Survival Fractions"
+author: "FiG-T"
+date: "`r Sys.Date()`"
+header-includes:
+   - \usepackage[default]{sourcesanspro}
+   - \usepackage[T1]{fontenc}
+mainfont: SourceSansPro
+output: 
+  html_document: 
+    keep_md: yes
+    toc: yes
+toc: TRUE
+editor_options:
+  markdown:
+    wrap: 80
+  chunk_output_type: inline
+---
+
+## Introduction 
+
+Rough plots showing the overall trends in the data for cold survival. The input file for this script is created at the end of 'S01_CalculateNormalisedSurvivalAverages.Rmd'. 
+
+## Libraries
+
+```{r libraries, echo=FALSE, message=FALSE, warning=FALSE}
+library(here, quietly = TRUE)
+# library(readxl, quietly = TRUE)
+library(dplyr, quietly = TRUE)
+# library(testthat, quietly = TRUE)
+library(readr, quietly = TRUE)
+
+# library(tidyr, quietly = TRUE)
+# library(stringr, quietly = TRUE)
+library(ggplot2, quietly = TRUE)
+# library(forcats, quietly = TRUE)
+
+```
+
+## Setup
+
+This chunk calls information in from the project-specific setup these files. These contain information on the relative paths to different folders and the colour palettes.
+
+```{r configure-setup, echo=FALSE, message=FALSE, warning=FALSE }
+# source all files in configure directory
+for (file in list.files(here("phenotypes/scripts/S00_ConfigureSetup"))) {
+  source(here("phenotypes/scripts/S00_ConfigureSetup", file), verbose = FALSE)
+}
+rm(file)
+
+# set path to data 
+path_to_data <- here("phenotypes/data/D01_ColdTolerance/")
+
+# set path to results for this file
+path_to_results <- here("phenotypes/results/R01_ColdTolerance/S02_PlotNormalisedSurvivalFractions")
+```
+
+## Load Data
+
+```{r load-data}
+# load data 
+cold_survival_normalised_averages <- readr::read_csv(
+  file = here(path_to_data, "normalised_survial_population_averages.csv"), 
+  col_names = TRUE, 
+  show_col_types = FALSE
+)
+```
+
+## Exploratory Plots 
+
+### Non-normalised data
+
+Before looking at the normalised data the following plots show changes in the absolute survival number over time. This is to get a sense of how the data is behaving/ whether any biases may be introduced by the normalisation process. 
+
+```{r plot-absolute-survival}
+ggplot(
+  data = cold_survival_normalised_averages, 
+    mapping = aes(
+      x = timepoint, 
+      y = survical_drop, 
+      colour = genotype
+    )
+  ) +
+  geom_point(
+    position = position_dodge(0.2), 
+    size = 3
+  ) +
+  geom_smooth(
+    method = "loess"
+  ) +
+  scale_colour_manual(
+    values = aus_fly_palette
+  ) +
+  facet_wrap("genotype") +
+  theme_light()
+```
+
+### Checking theorerical maximum normalised increase 
+
+```{r theoretical-increases}
+
+theoretical_max <- cold_survival_normalised_averages |>
+  group_by(timepoint) |>
+  dplyr::reframe(theory_max = 100/control_ave) |> 
+  dplyr::distinct()
+
+```
+
+### Normalised data
+
+```{r plot-normalised-survival}
+ggplot(
+  data = cold_survival_normalised_averages, 
+    mapping = aes(
+      x = timepoint, 
+      y = survical_drop_normalised
+    )
+  ) +
+  geom_point(
+    mapping = aes(
+      colour = genotype
+    ),
+    position = position_dodge(0.2), 
+    size = 3
+  ) +
+  geom_smooth(
+     mapping = aes(
+      colour = genotype
+    ),
+    method = "lm"
+  ) +
+  scale_colour_manual(
+    values = aus_fly_palette
+  ) +
+  facet_wrap("genotype") +
+  geom_point(
+    data = theoretical_max |> dplyr::filter(theory_max < 2),
+    mapping = aes(
+      x = timepoint,
+      y = theory_max
+    )
+  ) +
+  theme_light()
+```

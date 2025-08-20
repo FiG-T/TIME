@@ -131,6 +131,7 @@ cold_survival_normalised_averages <- cold_survival |>
   reframe(
     inital_temp = as.numeric(initial_temp), 
     date = date,
+    control_ave = control_ave,
     survical_drop = mean(per_drop, na.rm = TRUE),
     survical_drop_normalised = mean(per_drop, na.rm = TRUE)/mean(control_ave)
   )
