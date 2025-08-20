@@ -1,0 +1,147 @@
+---
+title: "Calculate Normalised Survival Fractions"
+author: "FiG-T"
+date: "`r Sys.Date()`"
+header-includes:
+   - \usepackage[default]{sourcesanspro}
+   - \usepackage[T1]{fontenc}
+mainfont: SourceSansPro
+output: 
+  html_document: 
+    keep_md: yes
+    toc: yes
+toc: TRUE
+editor_options:
+  markdown:
+    wrap: 80
+  chunk_output_type: inline
+---
+
+## Introduction 
+
+One measure of fitness used in this experiment is survival (following stress treatment). This is designed to approximate how well a fly can survive without the need for a full longevity assay (which may take months), and is thus more suitable for a study of this size.
+
+Flies from different populations (1-11,14) are left in a chill coma state for 25h (~4ºC) - this is used as the stress treatment. Upon removal the flies are returned to room temperature and left to recover. The number of surviving flies per vial (of an original 10) are then counted after 5h (survival_5h) and 24h (survival_24h).
+
+## Libraries
+
+```{r libraries, echo=FALSE, message=FALSE, warning=FALSE}
+library(here, quietly = TRUE)
+library(readxl, quietly = TRUE)
+library(dplyr, quietly = TRUE)
+library(testthat, quietly = TRUE)
+library(readr, quietly = TRUE)
+
+# library(tidyr, quietly = TRUE)
+# library(stringr, quietly = TRUE)
+# library(ggplot2, quietly = TRUE)
+# library(forcats, quietly = TRUE)
+
+```
+
+## Setup
+
+This script calls information in from the project-specific setup these files. These contain information on the relative paths to different folders and the colour palettes.
+
+```{r configure-setup, echo=FALSE, message=FALSE, warning=FALSE }
+# source all files in configure directory
+for (file in list.files(here("phenotypes/scripts/S00_ConfigureSetup"))) {
+  source(here("phenotypes/scripts/S00_ConfigureSetup", file), verbose = FALSE)
+}
+rm(file)
+
+# set path to data 
+path_to_data <- here("phenotypes/data/D01_ColdTolerance/")
+
+# set path to results for this file
+path_to_results <- here("phenotypes/results/R01_ColdTolerance/")
+```
+
+## Load Data
+
+```{r load-data}
+# load data 
+cold_survival <- readxl::read_excel(
+  path = here(path_to_data, "TIME_thermal_survival_data.xlsx"), 
+  trim_ws = TRUE, 
+  col_names = TRUE, 
+  range = readxl::cell_cols("A:J")
+)
+```
+
+### Format Factor Levels
+
+```{r format-factor-levels}
+# set the order of genotypes
+cold_survival$genotype <- factor(
+  cold_survival$genotype, 
+  levels = genotype_factor_levels
+)
+
+# set the order of populations
+cold_survival$pop <- factor(
+  cold_survival$pop, 
+  levels = population_factor_levels
+)
+```
+
+If this test fails then it is likely some vials have more flies at the 5h timepoint than they did at the start (which should never happen). This is likely a data-input error and will need to be treated. 
+
+```{r check-survival-limits}
+# run test
+testthat::expect_equal(
+  nrow(cold_survival |> dplyr::filter(survival_5h > start)), 
+  0 # the tibble should be empty
+)
+```
+
+## Calculate Survival Fractions
+
+```{r calculate-survival-fractions}
+cold_survival <- cold_survival |> 
+  dplyr::mutate(
+    # percentage survival 5 hours after removal from treatment
+    per_5h = (survival_5h / start) * 100,
+    # percentage survival 24 hours after removal from treatment
+    per_24h = (survival_24h /start) * 100, 
+    # survival percentage only including those that survived cold treatment
+    per_drop = (survival_24h/survival_5h) * 100
+  )
+```
+
+## Calculate Control Averages Per Timepoint
+
+```{r population-averages}
+cold_survival <- cold_survival |> 
+  filter(genotype %in% c("mM", "tT")) |> 
+  group_by(timepoint) |>
+  reframe(control_ave = mean(per_drop)) |>
+  left_join(
+    x = cold_survival, 
+    y = _ , 
+    by = "timepoint"
+  )
+```
+
+## Calculate Grouped Averages
+
+```{r grouped-averages, warning=FALSE}
+cold_survival_normalised_averages <- cold_survival |> 
+  group_by(genotype, pop, timepoint) |>
+  reframe(
+    inital_temp = as.numeric(initial_temp), 
+    date = date,
+    survical_drop = mean(per_drop, na.rm = TRUE),
+    survical_drop_normalised = mean(per_drop, na.rm = TRUE)/mean(control_ave)
+  )
+```
+
+## Save Formatted Data 
+
+```{r save-data}
+readr::write_csv(
+  x = cold_survival_normalised_averages, 
+  file = here(path_to_data, "normalised_survial_population_averages.csv"), 
+  col_names = TRUE
+)
+```
