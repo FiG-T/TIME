@@ -23,22 +23,8 @@ One measure of fitness used in this experiment is survival (following stress tre
 
 Flies from different populations (1-11,14) are left in a chill coma state for 25h (~4ºC) - this is used as the stress treatment. Upon removal the flies are returned to room temperature and left to recover. The number of surviving flies per vial (of an original 10) are then counted after 5h (survival_5h) and 24h (survival_24h).
 
-## Libraries
+> *Libraries* : Libraries are now listed in the S01_PathsShortcuts.R config file.  This is to make it easier to see which libraries are used across the whole project. 
 
-```{r libraries, echo=FALSE, message=FALSE, warning=FALSE}
-library(here, quietly = TRUE)
-library(readxl, quietly = TRUE)
-library(dplyr, quietly = TRUE)
-library(testthat, quietly = TRUE)
-library(readr, quietly = TRUE)
-library(ggplot2, quietly = TRUE)
-
-# library(tidyr, quietly = TRUE)
-# library(stringr, quietly = TRUE)
-
-# library(forcats, quietly = TRUE)
-
-```
 
 ## Setup
 
@@ -46,16 +32,16 @@ This script calls information in from the project-specific setup these files. Th
 
 ```{r configure-setup, echo=FALSE, message=FALSE, warning=FALSE }
 # source all files in configure directory
-for (file in list.files(here("phenotypes/scripts/S00_ConfigureSetup"))) {
-  source(here("phenotypes/scripts/S00_ConfigureSetup", file), verbose = FALSE)
+for (file in list.files(here::here("phenotypes/scripts/S00_ConfigureSetup"))) {
+  source(here::here("phenotypes/scripts/S00_ConfigureSetup", file), verbose = FALSE)
 }
 rm(file)
 
 # set path to data 
-path_to_data <- here("phenotypes/data/D01_ColdTolerance/")
+path_to_data <- here::here("phenotypes/data/D01_ColdTolerance/")
 
 # set path to results for this file
-path_to_results <- here("phenotypes/results/R01_ColdTolerance/")
+path_to_results <- here::here("phenotypes/results/R01_ColdTolerance/")
 ```
 
 ## Load Data
@@ -135,8 +121,8 @@ cold_survival_normalised <- cold_survival |>
     date = date,
     tray = tray,
     control_ave = control_ave,
-    survical_drop = per_drop,
-    survical_drop_normalised = per_drop / control_ave
+    survival_drop = per_drop,
+    survival_drop_normalised = per_drop / control_ave
   ) |> 
   dplyr::distinct()
 ```
@@ -159,10 +145,10 @@ cold_survival_normalised_averages <- cold_survival_normalised |>
     inital_temp = inital_temp, 
     date = date,
     control_ave = control_ave,
-    survical_drop_sd = sd(survical_drop, na.rm = TRUE),
-    survical_drop = mean(survical_drop, na.rm = TRUE),
-    survical_drop_normalised_sd = sd(survical_drop_normalised, na.rm = TRUE),
-    survical_drop_normalised = mean(survical_drop_normalised, na.rm = TRUE), 
+    survical_drop_sd = sd(survival_drop, na.rm = TRUE),
+    survical_drop = mean(survival_drop, na.rm = TRUE),
+    survival_drop_normalised_sd = sd(survival_drop_normalised, na.rm = TRUE),
+    survival_drop_normalised = mean(survival_drop_normalised, na.rm = TRUE), 
   ) |> 
   dplyr::distinct()
 ```
