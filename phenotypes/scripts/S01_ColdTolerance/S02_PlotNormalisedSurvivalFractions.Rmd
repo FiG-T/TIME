@@ -21,21 +21,7 @@ editor_options:
 
 Rough plots showing the overall trends in the data for cold survival. The input file for this script is created at the end of 'S01_CalculateNormalisedSurvivalAverages.Rmd'. 
 
-## Libraries
-
-```{r libraries, echo=FALSE, message=FALSE, warning=FALSE}
-library(here, quietly = TRUE)
-# library(readxl, quietly = TRUE)
-library(dplyr, quietly = TRUE)
-# library(testthat, quietly = TRUE)
-library(readr, quietly = TRUE)
-
-# library(tidyr, quietly = TRUE)
-# library(stringr, quietly = TRUE)
-library(ggplot2, quietly = TRUE)
-# library(forcats, quietly = TRUE)
-
-```
+> *Libraries* : Libraries are now listed in the S01_PathsShortcuts.R config file.  This is to make it easier to see which libraries are used across the whole project. 
 
 ## Setup
 
@@ -43,8 +29,8 @@ This chunk calls information in from the project-specific setup these files. The
 
 ```{r configure-setup, echo=FALSE, message=FALSE, warning=FALSE }
 # source all files in configure directory
-for (file in list.files(here("phenotypes/scripts/S00_ConfigureSetup"))) {
-  source(here("phenotypes/scripts/S00_ConfigureSetup", file), verbose = FALSE)
+for (file in list.files(here::here("phenotypes/scripts/S00_ConfigureSetup"))) {
+  source(here::here("phenotypes/scripts/S00_ConfigureSetup", file), verbose = FALSE)
 }
 rm(file)
 

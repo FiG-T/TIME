@@ -25,7 +25,6 @@ Flies from different populations (1-11,14) are left in a chill coma state for 25
 
 > *Libraries* : Libraries are now listed in the S01_PathsShortcuts.R config file.  This is to make it easier to see which libraries are used across the whole project. 
 
-
 ## Setup
 
 This script calls information in from the project-specific setup these files. These contain information on the relative paths to different folders and the colour palettes.
@@ -86,6 +85,7 @@ testthat::expect_equal(
 
 ```{r calculate-survival-fractions}
 cold_survival <- cold_survival |> 
+  
   dplyr::mutate(
     # percentage survival 5 hours after removal from treatment
     per_5h = (survival_5h / start) * 100,
