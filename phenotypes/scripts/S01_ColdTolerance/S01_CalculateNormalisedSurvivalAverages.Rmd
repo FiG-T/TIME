@@ -85,7 +85,6 @@ testthat::expect_equal(
 
 ```{r calculate-survival-fractions}
 cold_survival <- cold_survival |> 
-  
   dplyr::mutate(
     # percentage survival 5 hours after removal from treatment
     per_5h = (survival_5h / start) * 100,
@@ -117,7 +116,7 @@ cold_survival_normalised <- cold_survival |>
   group_by(genotype, pop, timepoint, replicate) |>
   reframe(
     pop = as.factor(pop),
-    inital_temp = as.numeric(initial_temp), 
+    initial_temp = as.numeric(initial_temp), 
     date = date,
     tray = tray,
     control_ave = control_ave,
@@ -142,7 +141,7 @@ cold_survival_normalised_averages <- cold_survival_normalised |>
   group_by(genotype, pop, timepoint) |>
   reframe(
     pop = as.factor(pop),
-    inital_temp = inital_temp, 
+    initial_temp = initial_temp, 
     date = date,
     control_ave = control_ave,
     survical_drop_sd = sd(survival_drop, na.rm = TRUE),
