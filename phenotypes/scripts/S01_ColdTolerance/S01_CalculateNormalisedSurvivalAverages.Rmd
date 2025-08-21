@@ -31,10 +31,11 @@ library(readxl, quietly = TRUE)
 library(dplyr, quietly = TRUE)
 library(testthat, quietly = TRUE)
 library(readr, quietly = TRUE)
+library(ggplot2, quietly = TRUE)
 
 # library(tidyr, quietly = TRUE)
 # library(stringr, quietly = TRUE)
-# library(ggplot2, quietly = TRUE)
+
 # library(forcats, quietly = TRUE)
 
 ```
@@ -123,18 +124,47 @@ cold_survival <- cold_survival |>
   )
 ```
 
+## Normalise *Each Vial* By Control Average for the Timepoint
+
+```{r grouped-averages, warning=FALSE}
+cold_survival_normalised <- cold_survival |> 
+  group_by(genotype, pop, timepoint, replicate) |>
+  reframe(
+    pop = as.factor(pop),
+    inital_temp = as.numeric(initial_temp), 
+    date = date,
+    tray = tray,
+    control_ave = control_ave,
+    survical_drop = per_drop,
+    survical_drop_normalised = per_drop / control_ave
+  ) |> 
+  dplyr::distinct()
+```
+
+```{r save-data}
+readr::write_csv(
+  x = cold_survival_normalised, 
+  file = here(path_to_data, "normalised_survival.csv"), 
+  col_names = TRUE
+)
+```
+
 ## Calculate Grouped Averages
 
 ```{r grouped-averages, warning=FALSE}
-cold_survival_normalised_averages <- cold_survival |> 
+cold_survival_normalised_averages <- cold_survival_normalised |> 
   group_by(genotype, pop, timepoint) |>
   reframe(
-    inital_temp = as.numeric(initial_temp), 
+    pop = as.factor(pop),
+    inital_temp = inital_temp, 
     date = date,
     control_ave = control_ave,
-    survical_drop = mean(per_drop, na.rm = TRUE),
-    survical_drop_normalised = mean(per_drop, na.rm = TRUE)/mean(control_ave)
-  )
+    survical_drop_sd = sd(survical_drop, na.rm = TRUE),
+    survical_drop = mean(survical_drop, na.rm = TRUE),
+    survical_drop_normalised_sd = sd(survical_drop_normalised, na.rm = TRUE),
+    survical_drop_normalised = mean(survical_drop_normalised, na.rm = TRUE), 
+  ) |> 
+  dplyr::distinct()
 ```
 
 ## Save Formatted Data 
