@@ -1,0 +1,140 @@
+---
+title: " Statistics: Normalised Survival Fractions"
+author: "FiG-T"
+date: "`r Sys.Date()`"
+header-includes:
+   - \usepackage[default]{sourcesanspro}
+   - \usepackage[T1]{fontenc}
+mainfont: SourceSansPro
+output: 
+  html_document: 
+    keep_md: yes
+    toc: yes
+toc: TRUE
+editor_options:
+  markdown:
+    wrap: 80
+  chunk_output_type: inline
+---
+
+## Introduction 
+
+Statistics for trends in cold survival (across timepoints and between genotypes). The input file for this script is created at the end of 'S01_CalculateNormalisedSurvivalAverages.Rmd'. 
+
+> *Libraries* : Libraries are now listed in the S01_PathsShortcuts.R config file.  This is to make it easier to see which libraries are used across the whole project. 
+
+## Setup
+
+This chunk calls information in from the project-specific setup these files. These contain information on the relative paths to different folders and the colour palettes.
+
+```{r configure-setup, echo=FALSE, message=FALSE, warning=FALSE }
+# source all files in configure directory
+for (file in list.files(here::here("phenotypes/scripts/S00_ConfigureSetup"))) {
+  source(here::here("phenotypes/scripts/S00_ConfigureSetup", file), verbose = FALSE)
+}
+rm(file)
+
+# set path to data 
+path_to_data <- here::here("phenotypes/data/D01_ColdTolerance/")
+
+# set path to results for this file
+path_to_results <- here::here("phenotypes/results/R01_ColdTolerance/S04_StatisticsNormalisedSurvivalFractions")
+```
+
+## Load Data
+
+The first approach is using the normalised, but ungrouped data. 
+
+```{r load-data}
+# load data 
+cold_survival_normalised <- readr::read_csv(
+  file = here(path_to_data, "normalised_survival.csv"), 
+  col_names = TRUE, 
+  show_col_types = FALSE
+)
+```
+
+## Build Models
+
+```{r build-models}
+
+survival_model <- glm(
+  data = cold_survival_normalised,
+  formula = survival_drop_normalised ~ as.factor(timepoint) * genotype + (1|replicate) + (1|initial_temp) 
+)
+
+anova(survival_model)
+
+null_model <- lme4::lmer(
+  data = cold_survival_normalised,
+  formula = survival_drop_normalised ~  timepoint + genotype + (1|replicate) + (1|initial_temp) 
+)
+
+anova(null_model, survival_model)
+
+```
+
+```{r plot-residuals}
+
+ggplot(
+  data = survival_model, 
+  mapping = aes(
+    sample = survival_model$fitted.values
+  )
+) +
+  stat_qq_line(
+  ) +
+  stat_qq()
+  geom_point() +
+  geom_hline(yintercept = 0) +
+  theme_light()
+  
+```
+
+```{r calculate-estimated-marginal-means}
+
+emmeans_survival <- emmeans::emmeans(
+  glm(
+    data = cold_survival_normalised,
+    formula = survival_drop_normalised ~ as.factor(timepoint) * genotype
+  ), 
+    ~ as.factor(timepoint) * genotype 
+)
+```
+
+```{r}
+ggplot(
+  data = tibble::as_tibble(emmeans_survival), 
+  mapping = aes(
+    x = timepoint, 
+    y = emmean,
+    colour = genotype
+  )
+) +
+  geom_point(
+    mapping = aes(
+      colour = genotype
+    ),
+    size = 3, 
+    show.legend = FALSE
+  ) +
+  geom_smooth(
+     mapping = aes(
+      colour = genotype
+    ),
+    method = "lm", 
+    show.legend = FALSE
+  ) +
+  scale_colour_manual(
+    values = aus_fly_palette
+  ) +
+  facet_wrap("genotype") +
+  labs(
+    x = "Timepoint", 
+    y = "Estimated Mean Survival"
+  ) +
+  theme_light() +
+  muted_strips
+
+
+```
