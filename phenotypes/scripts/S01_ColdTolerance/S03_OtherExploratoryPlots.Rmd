@@ -1,0 +1,205 @@
+---
+title: "Other Exploratory Plots"
+author: "FiG-T"
+date: "`r Sys.Date()`"
+header-includes:
+   - \usepackage[default]{sourcesanspro}
+   - \usepackage[T1]{fontenc}
+mainfont: SourceSansPro
+output: 
+  html_document: 
+    keep_md: yes
+    toc: yes
+toc: TRUE
+editor_options:
+  markdown:
+    wrap: 80
+  chunk_output_type: inline
+---
+
+## Introduction 
+
+Rough plots checking the impact of 'random' variables on cold survival. The input file for this script is created at the end of 'S01_CalculateNormalisedSurvivalAverages.Rmd'. 
+
+> *Libraries* : Libraries are now listed in the S01_PathsShortcuts.R config file.  This is to make it easier to see which libraries are used across the whole project. 
+
+## Setup
+
+This chunk calls information in from the project-specific setup these files. These contain information on the relative paths to different folders and the colour palettes.
+
+```{r configure-setup, echo=FALSE, message=FALSE, warning=FALSE }
+# source all files in configure directory
+for (file in list.files(here::here("phenotypes/scripts/S00_ConfigureSetup"))) {
+  source(here::here("phenotypes/scripts/S00_ConfigureSetup", file), verbose = FALSE)
+}
+rm(file)
+
+# set path to data 
+path_to_data <- here("phenotypes/data/D01_ColdTolerance/")
+
+# set path to results for this file
+path_to_results <- here("phenotypes/results/R01_ColdTolerance/S03_OtherExploratoryPlots")
+```
+
+## Load Data
+
+Using the ungrouped survival data: 
+
+```{r load-data}
+# load data 
+cold_survival_normalised <- readr::read_csv(
+  file = here(path_to_data, "normalised_survival.csv"), 
+  col_names = TRUE, 
+  show_col_types = FALSE
+)
+```
+
+```{r format-factor-levels}
+# set the order of genotypes
+cold_survival_normalised$genotype <- factor(
+  cold_survival_normalised$genotype, 
+  levels = genotype_factor_levels
+)
+
+# set the order of populations
+cold_survival_normalised$pop <- factor(
+  cold_survival_normalised$pop, 
+  levels = population_factor_levels
+)
+```
+
+## Exploratory Plots 
+
+```{r replicate-impact}
+# looking across vials 
+ggplot(
+    data = cold_survival_normalised, 
+    mapping = aes(
+      x = replicate, 
+      y = survival_drop_normalised, 
+      colour = genotype
+    )
+  ) +
+  geom_point(
+    show.legend = FALSE
+  ) +
+  scale_colour_manual(
+    values = aus_fly_palette
+  ) +
+  geom_smooth(
+    method = "lm", 
+    colour = "black", 
+    linetype = "dotdash"
+  ) +
+  facet_grid(
+    rows = vars(genotype), 
+    cols = vars(timepoint)
+  ) +
+  labs(
+    x = "Replicate (vial number)", 
+    y = "Normalised Survivial"
+  ) +
+  theme_light() +
+  muted_strips
+
+```
+```{r save-non-normalised-plot}
+ggsave(
+  filename = here(path_to_results, "F01_NormalisedSurvivalFractionsVsReplicateNumber.pdf"), 
+  plot = last_plot(), 
+  bg = "transparent", 
+  width = 10, 
+  height = 7
+)
+```
+This plot suggests that replicate number has a random effect (as expected) on normalised survivial. 
+
+### Plot Initial Temperature Effects 
+
+```{r replicate-impact}
+# looking across vials 
+ggplot(
+    data = cold_survival_normalised , 
+    mapping = aes(
+      x = initial_temp, 
+      y = survival_drop_normalised, 
+      colour = genotype
+    )
+  ) +
+  geom_point(
+    show.legend = FALSE
+  ) +
+  scale_colour_manual(
+    values = aus_fly_palette
+  ) +
+  geom_smooth(
+    method = "lm", 
+    colour = "black", 
+    linetype = "dotdash"
+  ) +
+  labs(
+    x = "Starting Temperature (ºC)",
+    y = "Normalised Survivial"
+  ) +
+  theme_light() +
+  muted_strips
+
+```
+```{r save-non-normalised-plot}
+ggsave(
+  filename = here(path_to_results, "F02_NormalisedSurvivalFractionsVsStartingTemperature.pdf"), 
+  plot = last_plot(), 
+  bg = "transparent", 
+  width = 10, 
+  height = 7
+)
+```
+
+Looking across all timepoints and genotypes, there also appears to be no strong impacts from starting temperature.
+
+### Plot Tray Effects
+
+```{r replicate-impact}
+# looking across vials 
+ggplot(
+    data = cold_survival_normalised , 
+    mapping = aes(
+      x = tray, 
+      y = survival_drop_normalised, 
+      colour = genotype
+    )
+  ) +
+  geom_point(
+    show.legend = FALSE, 
+    position = position_dodge(0.6)
+  ) +
+  scale_colour_manual(
+    values = aus_fly_palette
+  ) +
+  geom_smooth(
+    method = "lm", 
+    colour = "black", 
+    linetype = "dotdash"
+  ) +
+  labs(
+    x = "Tray",
+    y = "Normalised Survivial"
+  ) +
+  facet_grid(
+    cols = vars(timepoint)
+  ) +
+  theme_light() +
+  muted_strips
+
+```
+```{r save-non-normalised-plot}
+ggsave(
+  filename = here(path_to_results, "F03_NormalisedSurvivalFractionsVsTray.pdf"), 
+  plot = last_plot(), 
+  bg = "transparent", 
+  width = 10, 
+  height = 7
+)
+```
+
+This also confirms that tray does not have an effect on the survival rate. 
