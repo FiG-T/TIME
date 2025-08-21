@@ -83,27 +83,41 @@ ggplot(
   ) +
   geom_point(
     position = position_dodge(0.2), 
-    size = 3
+    size = 3, 
+    show.legend = FALSE
   ) +
   geom_smooth(
-    method = "loess"
+    method = "loess", 
+    show.legend = FALSE
   ) +
   scale_colour_manual(
     values = aus_fly_palette
   ) +
+  labs(
+    x = "Timepoint", 
+    y = "Absolute Survival (%)"
+  ) +
   facet_wrap("genotype") +
-  theme_light()
+  theme_light() +
+  muted_strips
+```
+```{r save-non-normalised-plot}
+ggsave(
+  filename = here(path_to_results, "F01_NonNormalisedSurvivalFractions.pdf"), 
+  plot = last_plot(), 
+  bg = "transparent", 
+  width = 10, 
+  height = 7
+)
 ```
 
 ### Checking theorerical maximum normalised increase 
 
 ```{r theoretical-increases}
-
 theoretical_max <- cold_survival_normalised_averages |>
   group_by(timepoint) |>
   dplyr::reframe(theory_max = 100/control_ave) |> 
   dplyr::distinct()
-
 ```
 
 ### Normalised data
@@ -121,13 +135,15 @@ ggplot(
       colour = genotype
     ),
     position = position_dodge(0.2), 
-    size = 3
+    size = 3, 
+    show.legend = FALSE
   ) +
   geom_smooth(
      mapping = aes(
       colour = genotype
     ),
-    method = "lm"
+    method = "lm", 
+    show.legend = FALSE
   ) +
   scale_colour_manual(
     values = aus_fly_palette
@@ -140,5 +156,21 @@ ggplot(
       y = theory_max
     )
   ) +
-  theme_light()
+    labs(
+    x = "Timepoint", 
+    y = "Normalised Survival"
+  ) +
+  theme_light() +
+  muted_strips
+```
+> Note: Black dots indicate the 'theoretical maximum' for each timepoint.  I.e.: if 100% survival was observed, what would the normalised value be? 
+
+```{r save-non-normalised-plot}
+ggsave(
+  filename = here(path_to_results, "F02_NormalisedSurvivalFractionsLinear.pdf"), 
+  plot = last_plot(), 
+  bg = "transparent", 
+  width = 10, 
+  height = 7
+)
 ```
