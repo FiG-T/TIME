@@ -118,12 +118,20 @@ ggplot(
     size = 3, 
     show.legend = FALSE
   ) +
+  geom_errorbar(
+    mapping = aes(
+      ymax = upper.CL, 
+      ymin = lower.CL
+    ), 
+    width = 0.2
+  ) +
   geom_smooth(
      mapping = aes(
       colour = genotype
     ),
     method = "lm", 
-    show.legend = FALSE
+    show.legend = FALSE, 
+    se = FALSE
   ) +
   scale_colour_manual(
     values = aus_fly_palette
@@ -135,6 +143,17 @@ ggplot(
   ) +
   theme_light() +
   muted_strips
+
+
+```
+
+```{r}
+
+
+pairs(
+  emmeans_survival, 
+  simple = "timepoint"
+)
 
 
 ```
