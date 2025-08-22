@@ -1,0 +1,161 @@
+---
+title: "Format To Individuals"
+author: "FiG-T"
+date: "`r Sys.Date()`"
+header-includes:
+   - \usepackage[default]{sourcesanspro}
+   - \usepackage[T1]{fontenc}
+mainfont: SourceSansPro
+output: 
+  html_document: 
+    keep_md: yes
+    toc: yes
+toc: TRUE
+editor_options:
+  markdown:
+    wrap: 80
+  chunk_output_type: inline
+---
+## Introduction
+
+As part of the statistcal measures it can be useful to convert from survival/birth counts per vial to an individual scoring format...
+
+> *Libraries* : Libraries are now listed in the S01_PathsShortcuts.R config file.  This is to make it easier to see which libraries are used across the whole project. 
+
+## Setup
+
+This script calls information in from the project-specific setup these files. These contain information on the relative paths to different folders and the colour palettes.
+
+```{r configure-setup, echo=FALSE, message=FALSE, warning=FALSE }
+# source all files in configure directory
+for (file in list.files(here::here("phenotypes/scripts/S00_ConfigureSetup"))) {
+  source(here::here("phenotypes/scripts/S00_ConfigureSetup", file), verbose = FALSE)
+}
+rm(file)
+
+# set path to data 
+path_to_data <- here::here("phenotypes/data/D01_ColdTolerance/")
+
+# set path to results for this file
+path_to_results <- here::here("phenotypes/results/R05_FormatToIndividuals/")
+```
+
+## Load Data
+
+This uses the *raw* data that has not been converted into fractions/percentages and has not yet been normalised. 
+
+```{r load-data}
+# load data 
+cold_survival <- readxl::read_excel(
+  path = here(path_to_data, "TIME_thermal_survival_data.xlsx"), 
+  trim_ws = TRUE, 
+  col_names = TRUE, 
+  range = readxl::cell_cols("A:J")
+)
+```
+
+### Format Factor Levels
+
+```{r format-factor-levels}
+# set the order of genotypes
+cold_survival$genotype <- factor(
+  cold_survival$genotype, 
+  levels = genotype_factor_levels
+)
+
+# set the order of populations
+cold_survival$pop <- factor(
+  cold_survival$pop, 
+  levels = population_factor_levels
+)
+```
+
+## Calculate Count Data 
+
+Here you work out how many flies meet each condition.  i.e.: If I have 15 out of 20 flies survive, I need to add another columm listing how many died. 
+
+```{r create-subsets }
+
+# create subset of flies which survived:
+indvividuals_survived <- cold_survival |> 
+  dplyr::filter(! is.na(survival_24h)) |>
+  tidyr::uncount(
+     weights = survival_24h, 
+     .id = "fly" # add a unique identified (so that your rows are different)
+  ) |>
+  dplyr::select(
+    -c(start, survival_5h) # remove rows you dont need in your output file 
+  ) |>
+  dplyr::mutate(
+    survived = 1 # add column specifying that these survived
+  )
+
+# create table for those who died: 
+indvividuals_died <- cold_survival |> 
+  dplyr::filter(! is.na(survival_24h)) |>
+  tidyr::uncount(
+     weights = (survival_5h - survival_24h),  # here the number to extend by is those that were included, but did not make it 
+     .id = "fly"
+  ) |>
+  dplyr::select(
+    -c(start, survival_5h, survival_24h)
+  ) |>
+  dplyr::mutate(
+    survived = 0 # add column specifying that these died
+  )
+
+# check and check again that your two datasets have the same column in the same order: 
+testthat::expect_equal(
+  names(indvividuals_survived), 
+  names(indvividuals_died)
+)
+# this should throw an error if they don't match
+
+# combine these two datasets
+individual_survival <- dplyr::bind_rows(
+  indvividuals_survived, 
+  indvividuals_died
+)
+
+```
+
+```{r save-output}
+readr::write_csv(
+  x = individual_survival, 
+  file = here(path_to_data, "individual_survival_scores.csv"), 
+  col_names = TRUE
+)
+```
+
+## Plotting 
+
+As a sanity Check quickly plot... 
+
+```{r quick-plot} 
+ggplot(
+  data = individual_survival, 
+  mapping = aes(
+    x = survived
+  )
+) +
+  geom_histogram(
+    fill = "blue"
+  ) 
+```
+This should confirm that your data is either 0 or 1: there should be 2 bars in the data. 
+
+## Models 
+
+Running out of time right now - you should put this stuff in a separate script... 
+
+
+```{r models}
+
+individual_model <- glm(
+  data = individual_survival, 
+  family = "binomial",  # the important bit, 
+  formula = survived ~ genotype * timepoint + (1|replicate)
+)
+
+anova(individual_model)
+```
