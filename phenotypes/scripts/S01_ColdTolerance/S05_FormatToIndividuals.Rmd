@@ -130,35 +130,4 @@ readr::write_csv(
 )
 ```
 
-## Plotting 
 
-As a sanity Check quickly plot... 
-
-```{r quick-plot} 
-ggplot(
-  data = individual_survival, 
-  mapping = aes(
-    x = survived
-  )
-) +
-  geom_histogram(
-    fill = "blue"
-  ) 
-```
-This should confirm that your data is either 0 or 1: there should be 2 bars in the data. 
-
-## Models 
-
-Running out of time right now - you should put this stuff in a separate script... 
-
-
-```{r models}
-
-individual_model <- lme4::glmer(
-  data = individual_survival, 
-  family = "binomial",  # the important bit, 
-  formula = survived ~ timepoint * genotype + (1|tray)
-)
-
-summary(individual_model)
-```
