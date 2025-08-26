@@ -38,7 +38,7 @@ rm(file)
 path_to_data <- here::here("phenotypes/data/D01_ColdTolerance/")
 
 # set path to results for this file
-path_to_results <- here::here("phenotypes/results/R01_ColdTolerance/S04_StatisticsNormalisedSurvivalFractions")
+path_to_results <- here::here("phenotypes/results/R01_ColdTolerance/R04_StatisticsNormalisedSurvivalFractions")
 ```
 
 ## Load Data
@@ -217,4 +217,12 @@ ggplot(
   )
 ```
 
-
+```{r save-normalised-pairwise-comparisons-plot}
+ggsave(
+  filename = here(path_to_results, "F01_NormalisedSurvivalFractionsVsStartingTemperature.pdf"), 
+  plot = last_plot(), 
+  bg = "transparent", 
+  width = 10, 
+  height = 7
+)
+```
