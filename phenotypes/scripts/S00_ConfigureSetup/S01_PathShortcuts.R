@@ -11,7 +11,11 @@ library(dplyr, quietly = TRUE)
 library(testthat, quietly = TRUE)
 library(readr, quietly = TRUE)
 library(ggplot2, quietly = TRUE)
+library(stringr, quietly = TRUE)
+
+# for building models with fixed and random effects:
+library(lmerTest, quietly = TRUE)
 
 #library(tidyr, quietly = TRUE)
-# library(stringr, quietly = TRUE)
+
 # library(forcats, quietly = TRUE)
