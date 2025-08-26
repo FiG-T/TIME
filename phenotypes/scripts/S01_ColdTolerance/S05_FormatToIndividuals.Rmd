@@ -117,6 +117,9 @@ individual_survival <- dplyr::bind_rows(
   indvividuals_died
 )
 
+# clean up unnecessary data 
+rm(indvividuals_survived, indvividuals_died)
+
 ```
 
 ```{r save-output}
@@ -151,11 +154,11 @@ Running out of time right now - you should put this stuff in a separate script..
 
 ```{r models}
 
-individual_model <- glm(
+individual_model <- lme4::glmer(
   data = individual_survival, 
   family = "binomial",  # the important bit, 
-  formula = survived ~ genotype * timepoint + (1|replicate)
+  formula = survived ~ timepoint * genotype + (1|tray)
 )
 
-anova(individual_model)
+summary(individual_model)
 ```
