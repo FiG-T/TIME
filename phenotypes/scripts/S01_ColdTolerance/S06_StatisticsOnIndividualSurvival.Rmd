@@ -1,0 +1,94 @@
+---
+title: "Statistcs On Individual Survival"
+author: "FiG-T"
+date: "`r Sys.Date()`"
+header-includes:
+   - \usepackage[default]{sourcesanspro}
+   - \usepackage[T1]{fontenc}
+mainfont: SourceSansPro
+output: 
+  html_document: 
+    keep_md: yes
+    toc: yes
+toc: TRUE
+editor_options:
+  markdown:
+    wrap: 80
+  chunk_output_type: inline
+---
+## Introduction
+
+As part of the statistcal measures it can be useful to convert from survival/birth counts per vial to an individual scoring format...
+
+> *Libraries* : Libraries are now listed in the S01_PathsShortcuts.R config file.  This is to make it easier to see which libraries are used across the whole project. 
+
+## Setup
+
+This script calls information in from the project-specific setup these files. These contain information on the relative paths to different folders and the colour palettes.
+
+```{r configure-setup, echo=FALSE, message=FALSE, warning=FALSE }
+# source all files in configure directory
+for (file in list.files(here::here("phenotypes/scripts/S00_ConfigureSetup"))) {
+  source(here::here("phenotypes/scripts/S00_ConfigureSetup", file), verbose = FALSE)
+}
+rm(file)
+
+# set path to data 
+path_to_data <- here::here("phenotypes/data/D01_ColdTolerance/")
+
+# set path to results for this file
+path_to_results <- here::here("phenotypes/results/R06_StatisticsOnIndividualSurvival/")
+```
+
+## Load Data
+
+This uses the individual-formatted data created in the `S05_FormatToIndividuals.Rmd` file.  
+
+```{r load-data}
+# load data 
+individual_survival <- readr::read_csv(
+  file = here(path_to_data, "individual_survival_scores.csv"), 
+  col_names = TRUE
+)
+```
+
+## Plotting 
+
+As a sanity Check quickly plot... 
+
+```{r quick-plot} 
+ggplot(
+  data = individual_survival, 
+  mapping = aes(
+    x = survived
+  )
+) +
+  geom_histogram(
+    fill = "blue"
+  ) 
+```
+
+This should confirm that your data is either 0 or 1: there should be 2 bars in the data. 
+
+## Models 
+
+Running out of time right now - you should put this stuff in a separate script... 
+
+```{r models}
+# run model with population as a predictor
+individual_model <- lme4::glmer(
+  data = individual_survival,
+  family = "binomial",  # the important bit,
+  formula = survived ~ timepoint * pop + (1|tray)
+)
+
+# run null model with only timepoint and random effects
+null_model <- lme4::glmer(
+  data = individual_survival,
+  family = "binomial",  # the important bit,
+  formula = survived ~ timepoint + (1|tray)
+)
+
+# compare the two models: 
+anova(null_model, individual_model)
+```
