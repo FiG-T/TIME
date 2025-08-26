@@ -43,7 +43,7 @@ path_to_results <- here::here("phenotypes/results/R01_ColdTolerance/S04_Statisti
 
 ## Load Data
 
-The first approach is using the normalised, but ungrouped data. 
+The first approach is using the normalised, but un-grouped data. 
 
 ```{r load-data}
 # load data 
@@ -54,52 +54,60 @@ cold_survival_normalised <- readr::read_csv(
 )
 ```
 
+## Scale variables 
+
+As some variables have a much wider range than others - the plan is to scale the initial temperature variable
+
+```{r scale-variables}
+
+cold_survival_normalised <- cold_survival_normalised |> 
+  dplyr::mutate(
+    timepoint = as.factor(timepoint), 
+    genotype = as.factor(genotype), 
+    pop = as.factor(pop), 
+    initial_temp_scaled = scale(initial_temp), 
+    date = as.factor(date), 
+    tray = as.factor(tray)
+  )
+  
+```
+
 ## Build Models
 
 ```{r build-models}
-
-survival_model <- glm(
-  data = cold_survival_normalised,
-  formula = survival_drop_normalised ~ as.factor(timepoint) * genotype + (1|replicate) + (1|initial_temp) 
+# build mixed effects models: 
+survival_model <-  lmerTest::lmer(
+  data = cold_survival_normalised , #|> filter(genotype %in% c("mX", "tX")),
+  formula = survival_drop_normalised ~  pop * timepoint  + (1|tray)
 )
 
-anova(survival_model)
-
-null_model <- lme4::lmer(
-  data = cold_survival_normalised,
-  formula = survival_drop_normalised ~  timepoint + genotype + (1|replicate) + (1|initial_temp) 
-)
-
-anova(null_model, survival_model)
+# run anova with type 3 correction to account for potentially significant interaction terms. 
+anova(survival_model, type = 3)
 
 ```
 
-```{r plot-residuals}
+To check that assumptions are not massively violated - check the distribution of model residuals:
 
+```{r plot-residuals}
 ggplot(
-  data = survival_model, 
   mapping = aes(
-    sample = survival_model$fitted.values
+    sample = residuals(survival_model)
   )
 ) +
   stat_qq_line(
   ) +
-  stat_qq()
-  geom_point() +
-  geom_hline(yintercept = 0) +
+  stat_qq() +
   theme_light()
   
 ```
+The above plot shows broad meeting of requirements - I'm always a little unsure as to what is an 'acceptable' level of divergence...  Working on the premise that this is fine, we can then have a look at the estimated marginal means and the pairwise differences between groups. 
 
 ```{r calculate-estimated-marginal-means}
-
 emmeans_survival <- emmeans::emmeans(
-  glm(
-    data = cold_survival_normalised,
-    formula = survival_drop_normalised ~ as.factor(timepoint) * genotype
-  ), 
-    ~ as.factor(timepoint) * genotype 
+  survival_model, 
+   ~  timepoint * pop 
 )
+emmeans_survival
 ```
 
 ```{r}
@@ -120,8 +128,8 @@ ggplot(
   ) +
   geom_errorbar(
     mapping = aes(
-      ymax = upper.CL, 
-      ymin = lower.CL
+      ymax = emmean + SE, 
+      ymin = emmean - SE
     ), 
     width = 0.2
   ) +
@@ -139,7 +147,7 @@ ggplot(
   facet_wrap("genotype") +
   labs(
     x = "Timepoint", 
-    y = "Estimated Mean Survival"
+    y = "Estimated Mean (Normalised) Survival"
   ) +
   theme_light() +
   muted_strips
@@ -147,13 +155,53 @@ ggplot(
 
 ```
 
-```{r}
+```{r calculate pairwise-comparisons}
+# using the lmerTest package 
+ls_means(survival_model, which = "genotype", pairwise = TRUE)
 
-
-pairs(
+pairwise_comparisons <- as_tibble(pairs(
   emmeans_survival, 
-  simple = "timepoint"
+  simple = "pop"
+))
+
+pairwise_comparisons <-  pairwise_comparisons |> 
+  tidyr::separate_wider_delim(
+    cols = contrast, 
+    names = c("popA", "popB"), 
+    delim = " - ", 
+    
+  )
+
+# set the order of populations
+pairwise_comparisons$popA <- factor(
+  pairwise_comparisons$popA, 
+  levels = stringr::str_c("pop", population_factor_levels)
 )
-
-
+pairwise_comparisons$popB <- factor(
+  pairwise_comparisons$popB, 
+  levels = stringr::str_c("pop", population_factor_levels)
+)
 ```
+
+```{r plot-pairwise-comparisons}
+ggplot(
+  data = pairwise_comparisons |> dplyr::filter(popB %in% c("pop11", "pop14")), 
+  mapping = aes(
+    x = popA, 
+    y = popB, 
+    fill = p.value
+  )
+) +
+  geom_tile() +
+  facet_grid(
+    cols = vars(timepoint)
+  ) +
+  theme_light() +
+  muted_strips +
+  theme(
+    axis.title = element_blank(), 
+    axis.text.x = element_text(angle = 90)
+  )
+```
+
+
