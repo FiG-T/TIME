@@ -185,14 +185,27 @@ pairwise_comparisons$popB <- factor(
 
 ```{r plot-pairwise-comparisons}
 ggplot(
-  data = pairwise_comparisons |> dplyr::filter(popB %in% c("pop11", "pop14")), 
-  mapping = aes(
-    x = popA, 
-    y = popB, 
-    fill = p.value
-  )
 ) +
-  geom_tile() +
+  geom_tile(
+    data = pairwise_comparisons |> dplyr::filter(popB %in% c("pop11", "pop14")& p.value > 0.05), 
+    mapping = aes(
+      x = popA, 
+      y = popB, 
+      fill = p.value
+    )
+  ) +
+  scale_fill_gradient(
+    low = "wheat4", high = "white",
+    na.value = "grey90"
+    ) +
+  geom_tile(
+    data = pairwise_comparisons |> dplyr::filter(popB %in% c("pop11", "pop14") & p.value < 0.05), 
+    mapping = aes(
+      x = popA, 
+      y = popB
+    ), 
+    fill = "orange"
+  ) +
   facet_grid(
     cols = vars(timepoint)
   ) +
