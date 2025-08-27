@@ -87,6 +87,7 @@ ggplot(
   theme_light() +
   muted_strips
 ```
+
 ```{r save-non-normalised-plot}
 ggsave(
   filename = here(path_to_results, "F01_NonNormalisedSurvivalFractions.pdf"), 
