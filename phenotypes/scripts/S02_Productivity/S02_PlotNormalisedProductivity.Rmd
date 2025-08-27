@@ -1,0 +1,206 @@
+---
+title: "Plot Normalised Productivity"
+author: "FiG-T"
+date: "`r Sys.Date()`"
+header-includes:
+   - \usepackage[default]{sourcesanspro}
+   - \usepackage[T1]{fontenc}
+mainfont: SourceSansPro
+output: 
+  html_document: 
+    keep_md: yes
+    toc: yes
+toc: TRUE
+editor_options:
+  markdown:
+    wrap: 80
+  chunk_output_type: inline
+---
+
+## Introduction 
+
+Rough plots showing the overall trends in productivity. The input files for this script are created at the end of 'S01_CalculateNormalisedProductivityAverages.Rmd'. 
+
+> *Libraries* : Libraries are now listed in the S00_ConfigureSetup/S01_PathsShortcuts.R config file.  This is to make it easier to see which libraries are used across the whole project. 
+
+## Setup
+
+This chunk calls information in from the project-specific setup these files. These contain information on the relative paths to different folders and the colour palettes.
+
+```{r configure-setup, echo=FALSE, message=FALSE, warning=FALSE }
+# source all files in configure directory
+for (file in list.files(here::here("phenotypes/scripts/S00_ConfigureSetup"))) {
+  source(here::here("phenotypes/scripts/S00_ConfigureSetup", file), verbose = FALSE)
+}
+rm(file)
+
+# set path to data 
+path_to_data <- here::here("phenotypes/data/D02_Productivity/")
+
+# set path to results for this file
+path_to_results <- here::here("phenotypes/results/R02_Productivity/")
+```
+
+## Load Data
+
+Starting of with the *non-averaged* data. 
+
+```{r load-data}
+# load non-averaged but normalised data 
+normalised_productivity <- readr::read_csv(
+  file = here(path_to_data, "normalised_productivity.csv"), 
+  col_names = TRUE, 
+  show_col_types = FALSE
+)
+
+normalised_productivity_averages <-  readr::read_csv(
+  file = here(path_to_data, "normalised_productivity_population_averages.csv"), 
+  col_names = TRUE, 
+  show_col_types = FALSE
+)
+```
+
+```{r set-factor-levels}
+normalised_productivity$genotype <- factor(
+  normalised_productivity$genotype, 
+  levels = genotype_factor_levels
+  )
+# set levels for pop
+normalised_productivity$pop <- factor(
+  normalised_productivity$pop, 
+  levels = population_factor_levels_productivity
+  )
+
+normalised_productivity$timepoint <- as.factor(normalised_productivity$timepoint)
+
+# repeat for averaged data
+normalised_productivity_averages$genotype <- factor(
+  normalised_productivity_averages$genotype, 
+  levels = genotype_factor_levels
+  )
+# set levels for pop
+normalised_productivity_averages$pop <- factor(
+  normalised_productivity_averages$pop, 
+  levels = population_factor_levels_productivity
+  )
+```
+
+## Exploratory Plots 
+
+To get a sense of the broader patterns: first plotting the absolute number of offspring produced over the timepoints. 
+
+```{r plot-absolute-productivity, warning=FALSE}
+ggplot(
+  data = normalised_productivity, 
+    mapping = aes(
+      x = timepoint, 
+      y = n_adults, 
+      colour = genotype
+    )
+  ) +
+  geom_point(
+    position = position_jitter(0.2), 
+    size = 3, 
+    show.legend = FALSE
+  ) +
+  geom_smooth(
+    method = "lm", 
+    show.legend = FALSE
+  ) +
+  scale_colour_manual(
+    values = aus_fly_palette
+  ) +
+  labs(
+    x = "Timepoint", 
+    y = "Productivity"
+  ) +
+  facet_wrap("pop") +
+  theme_light() +
+  muted_strips_prod
+```
+
+This shows that there is broad consistency over the different timepoints - normalising is therefore less important than for the survival data. 
+
+```{r save-plot}
+ggsave(
+  filename = here(path_to_results, "R02_PlotNormalisedProductivity", "F01_AbsoluteProductivityPerPopulation.pdf"), 
+  plot = ggplot2::last_plot(), 
+  bg = "transparent", 
+  width = 10, 
+  height = 7
+)
+```
+
+```{r plot-absolute-survival, warning=FALSE}
+ggplot(
+  data = normalised_productivity_averages |> 
+      group_by(timepoint, genotype) |>
+      mutate(
+        normalised_productivity_mean = mean(normalised_productivity_mean, na.rm = TRUE)
+    ), 
+    mapping = aes(
+      x = timepoint, 
+      y = normalised_productivity_mean, 
+      colour = genotype
+    )
+  ) +
+    geom_hline(
+    aes(
+      yintercept = 1
+    ), 
+    linetype = "dotdash"
+  ) +
+  geom_point(
+    size = 3, 
+    show.legend = FALSE
+  ) +
+  geom_smooth(
+    method = "loess", 
+    show.legend = FALSE
+  ) +
+  scale_colour_manual(
+    values = aus_fly_palette
+  ) +
+  labs(
+    x = "Timepoint", 
+    y = "Normalised Productivity"
+  ) +
+  facet_grid(cols = vars(genotype) )+
+  theme_light() +
+  muted_strips_prod
+```
+
+```{r plot-absolute-survival, warning=FALSE}
+ggplot(
+  data = normalised_productivity_averages, 
+    mapping = aes(
+      x = timepoint, 
+      y = productivity_sd, 
+      colour = genotype
+    )
+  ) +
+  #   geom_hline(
+  #   aes(
+  #     yintercept = 1
+  #   ), 
+  #   linetype = "dotdash"
+  # ) +
+  geom_smooth(
+    method = "loess", 
+    show.legend = FALSE
+  ) +
+  geom_point(
+    size = 3, 
+    show.legend = FALSE
+  ) +
+  scale_colour_manual(
+    values = aus_fly_palette
+  ) +
+  labs(
+    x = "Timepoint", 
+    y = "Productivity Variance (SD)"
+  ) +
+  facet_grid(cols = vars(genotype) )+
+  theme_light() +
+  muted_strips_prod
+```

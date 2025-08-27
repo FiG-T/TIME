@@ -1,0 +1,132 @@
+---
+title: "Calculate Normalised Productivity Averages"
+author: "FiG-T"
+date: "`r Sys.Date()`"
+header-includes:
+   - \usepackage[default]{sourcesanspro}
+   - \usepackage[T1]{fontenc}
+mainfont: SourceSansPro
+output: 
+  html_document: 
+    keep_md: yes
+    toc: yes
+toc: TRUE
+editor_options:
+  markdown:
+    wrap: 80
+  chunk_output_type: inline
+---
+
+## Introduction 
+
+Productivity, the number of adult offspring from a single female, is a commonly used and reliable estimator of 'fitness', and is arguably one of the most direct measures.  
+
+In this experiments 10 males are combined with 10 females and allowed to mate for ~24 hours. Individual females are then isolated into their own tube and left to lay for an additional 16 hours.  After 2 weeks the total number of adult offspring per vial are counted. 
+
+> *Libraries* : Libraries are now listed in the S00_ConfigureSetup/S01_PathsShortcuts.R config file.  This is to make it easier to see which libraries are used across the whole project. 
+
+## Setup
+
+This script calls information in from the project-specific setup these files. These contain information on the relative paths to different folders and the colour palettes.
+
+```{r configure-setup, echo=FALSE, message=FALSE, warning=FALSE }
+# source all files in configure directory
+for (file in list.files(here::here("phenotypes/scripts/S00_ConfigureSetup"))) {
+  source(here::here("phenotypes/scripts/S00_ConfigureSetup", file), verbose = FALSE)
+}
+rm(file)
+
+# set path to data 
+path_to_data <- here::here("phenotypes/data/D02_Productivity/")
+
+# # set path to results for this file
+# path_to_results <- here::here("phenotypes/results/R02_Productivity/")
+```
+
+## Load Data
+
+```{r load-data}
+# load data 
+raw_productivity <- readxl::read_excel(
+  path = here(path_to_data, "raw_data", "time_production_raw_data.xlsx"), 
+  trim_ws = TRUE, 
+  col_names = TRUE, 
+  , 
+  range = readxl::cell_cols("A:E") # exclude column with notes 
+)
+```
+
+## Set Factor Levels 
+
+```{r set-factor-levels}
+raw_productivity$genotype <- factor(
+  raw_productivity$genotype, 
+  levels = genotype_factor_levels
+  )
+# set levels for pop
+raw_productivity$pop <- factor(
+  raw_productivity$pop, 
+  levels = population_factor_levels_productivity
+  )
+```
+
+## Calculate Control Averages Per Timepoint
+
+```{r population-averages}
+raw_productivity <- raw_productivity |> 
+  filter(genotype %in% c("mM")) |> 
+  group_by(timepoint) |>
+  reframe(control_ave = mean(production, na.rm = TRUE)) |>
+  left_join(
+    x = raw_productivity, 
+    y = _ , 
+    by = "timepoint"
+  )
+```
+
+## Normalise *Each Vial* By Control Average for the Timepoint
+
+```{r grouped-averages, warning=FALSE}
+normalised_productivity <- raw_productivity |> 
+  group_by(genotype, pop, timepoint, replicate) |>
+  reframe(
+    # pop = as.factor(pop),
+    control_ave = control_ave,
+    n_adults = production,
+    productivity_normalised = production / control_ave
+  ) |> 
+  dplyr::distinct()
+```
+
+```{r save-data}
+readr::write_csv(
+  x = normalised_productivity, 
+  file = here(path_to_data, "normalised_productivity.csv"), 
+  col_names = TRUE
+)
+```
+
+## Calculate Grouped Averages
+
+```{r grouped-averages, warning=FALSE}
+normalised_productivity_averages <- normalised_productivity |> 
+  group_by(genotype, pop, timepoint) |>
+  reframe(
+    control_ave = control_ave,
+    productivity_sd = sd(n_adults, na.rm = TRUE),
+    productivity_mean = mean(n_adults, na.rm = TRUE),
+    normalised_productivity_sd = sd(productivity_normalised, na.rm = TRUE),
+    normalised_productivity_mean = mean(productivity_normalised, na.rm = TRUE), 
+  ) |> 
+  dplyr::distinct()
+```
+
+## Save Formatted Data 
+
+```{r save-data}
+readr::write_csv(
+  x = normalised_productivity_averages, 
+  file = here(path_to_data, "normalised_productivity_population_averages.csv"), 
+  col_names = TRUE
+)
+```

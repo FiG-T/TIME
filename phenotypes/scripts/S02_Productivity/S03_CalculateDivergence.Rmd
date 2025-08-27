@@ -1,0 +1,173 @@
+---
+title: "Calculate Divergences"
+author: "FiG-T"
+date: "`r Sys.Date()`"
+header-includes:
+   - \usepackage[default]{sourcesanspro}
+   - \usepackage[T1]{fontenc}
+mainfont: SourceSansPro
+output: 
+  html_document: 
+    keep_md: yes
+    toc: yes
+toc: TRUE
+editor_options:
+  markdown:
+    wrap: 80
+  chunk_output_type: inline
+---
+
+## Introduction 
+
+  In the process of thinking about what my question is, I've decided to check the divergence between each hybrid population and the *maternal* source population. 
+  
+Here I am going back to taking the raw data as the input.  
+
+> *Libraries* : Libraries are now listed in the S00_ConfigureSetup/S01_PathsShortcuts.R config file.  This is to make it easier to see which libraries are used across the whole project. 
+
+## Setup
+
+This chunk calls information in from the project-specific setup these files. These contain information on the relative paths to different folders and the colour palettes.
+
+```{r configure-setup, echo=FALSE, message=FALSE, warning=FALSE }
+# source all files in configure directory
+for (file in list.files(here::here("phenotypes/scripts/S00_ConfigureSetup"))) {
+  source(here::here("phenotypes/scripts/S00_ConfigureSetup", file), verbose = FALSE)
+}
+rm(file)
+
+# set path to data 
+path_to_data <- here::here("phenotypes/data/D02_Productivity/")
+
+# set path to results for this file
+path_to_results <- here::here("phenotypes/results/R02_Productivity/R03_CalculateDivergence")
+```
+
+## Load Data
+
+Starting of with the *raw productivity* data. 
+
+```{r load-data}
+# load data 
+raw_productivity <- readxl::read_excel(
+  path = here(path_to_data, "raw_data", "time_production_raw_data.xlsx"), 
+  trim_ws = TRUE, 
+  col_names = TRUE, 
+  , 
+  range = readxl::cell_cols("A:E") # exclude column with notes 
+)
+```
+
+# Calculate Maternal Source Averages
+
+Calculating the averages for both mM and tT. 
+
+```{r population-averages}
+raw_productivity <- raw_productivity |> 
+  filter(genotype %in% c("mM")) |> 
+  group_by(timepoint) |>
+  reframe(mM_ave = mean(production, na.rm = TRUE)) |>
+  left_join(
+    x = raw_productivity, 
+    y = _ , 
+    by = "timepoint"
+  )
+
+raw_productivity <- raw_productivity |> 
+  filter(genotype %in% c("tT")) |> 
+  group_by(timepoint) |>
+  reframe(tT_ave = mean(production, na.rm = TRUE)) |>
+  left_join(
+    x = raw_productivity, 
+    y = _ , 
+    by = "timepoint"
+  )
+```
+
+## Calculate Divergences 
+
+```{r calculate-divergence}
+
+productivity_divergence <- raw_productivity |>
+  dplyr::mutate(
+    divergence = dplyr::case_when(
+      genotype == "mX"| genotype == "mM" ~ production - mM_ave, 
+      genotype == "tX"| genotype == "tT" ~ production - tT_ave
+    )
+  ) |>
+  filter(
+    ! is.na(divergence)
+  )
+
+```
+
+## Normalise *Each Vial* By Control Average for the Timepoint
+
+```{r population-averages, warning=FALSE}
+
+productivity_divergence_averages <-  productivity_divergence |> 
+  dplyr::group_by(genotype, pop, timepoint) |> 
+  reframe(
+    divergence_sd = sd(divergence, na.rm = TRUE),
+    divergence = mean(divergence, na.rm = TRUE)
+  )
+```
+
+## Plot Overall Trends 
+
+```{r divergence-plot}
+
+ggplot(
+  data = productivity_divergence_averages |> filter(timepoint %in% c(1,5) & genotype %in% c("mX", "tX")), 
+  mapping = aes(
+    x = timepoint, 
+    y = divergence, 
+    colour = genotype
+  )
+) +
+  geom_hline(
+    mapping = aes(
+      yintercept = 0
+    ), 
+    linetype = "dotdash"
+  ) +
+  geom_errorbar(
+    mapping = aes(
+      ymax = divergence + divergence_sd, 
+      ymin = divergence - divergence_sd
+    ), 
+    width = 0.2
+  ) +
+  geom_point(
+    size = 3
+  ) +
+  scale_colour_manual(
+    values = aus_fly_palette
+  ) + 
+  geom_smooth(
+    method = "lm", 
+    se = FALSE
+  ) +
+  facet_wrap(
+    "pop", 
+    ncol = 5
+  ) +
+  labs(
+    y = "Divergence To Maternal Source Genotype",
+    x = "Timepoint"
+  ) +
+  theme_light() +
+  muted_strips_prod
+
+
+```
+
+```{r save-plot}
+ggsave(
+  filename = here(path_to_results, "F01_OverallTrendsInDivergence.pdf"), 
+  plot = ggplot2::last_plot(), 
+  bg = "transparent", 
+  width = 10, 
+  height = 7
+)
+```
