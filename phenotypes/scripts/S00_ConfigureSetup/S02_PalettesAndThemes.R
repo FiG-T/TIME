@@ -14,17 +14,13 @@ aus_fly_palette_alt <- c(
   tT = "#8C1C13"
 )
 
-# Configure Levels
-
-# for genotypes
-genotype_factor_levels <- c("mM", "mX", "tX", "tT")
-
-# for populations
-population_factor_levels <- c("11", "1", "2", "3","4", "5", "6", "7","8", "9", "10", "14")
-
-
 # Configure Themes
-muted_strips <-   theme(
+muted_strips <- theme(
   strip.background = element_rect(fill = "#DBD4D3"),
   strip.text = element_text(colour = "black", size = 11)
+)
+
+muted_strips_prod <- theme(
+  strip.background = element_rect(fill = "#2F12D2"),
+  strip.text = element_text(colour = "white", size = 11)
 )
