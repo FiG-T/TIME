@@ -1,0 +1,133 @@
+---
+title: "Import and Format Raw Activity Data"
+author: "FiG-T"
+date: "`r Sys.Date()`"
+header-includes:
+   - \usepackage[default]{sourcesanspro}
+   - \usepackage[T1]{fontenc}
+mainfont: SourceSansPro
+output: 
+  html_document: 
+    keep_md: yes
+    toc: yes
+toc: TRUE
+editor_options:
+  markdown:
+    wrap: 80
+  chunk_output_type: inline
+---
+
+## Introduction 
+
+Fly activity can be used as a metric of 'fitness'.  Measurements are obtained by using the TriKinetics Drosophila Activity Monitors (DAMs) and are commonly used (normalling in aging/medical studies) as a proxy for circadian rhythm distruption or altered neuromuscular function.  It is also suitable for high-throughput approaches. 
+
+Individual flies are placed in small tubes and the number of times they cross a beam per minute is recorded. 32 flies can be measured simultaneously per monitor. In this experiment, each population occupies a single monitor at each timepoint. 
+
+> *Libraries* : Libraries are now listed in the S00_ConfigureSetup/S01_PathsShortcuts.R config file.  This is to make it easier to see which libraries are used across the whole project. 
+
+## Setup
+
+This script calls information in from the project-specific setup files. These contain information on the relative paths to different folders and the colour palettes.
+
+```{r configure-setup, echo=FALSE, message=FALSE, warning=FALSE }
+# source all files in configure directory
+for (file in list.files(here::here("phenotypes/scripts/S00_ConfigureSetup"))) {
+  source(here::here("phenotypes/scripts/S00_ConfigureSetup", file), verbose = FALSE)
+}
+rm(file)
+
+# set path to data 
+path_to_data <- here::here("phenotypes/data/D03_Activity/")
+```
+
+## Loading Data
+
+The output from the DAMs is a .csv file per monitor per run. Typically lots of copy/pasting is involved in extracting these values. To avoid doing this, a function has been made to automate this process.  
+
+> This function has now been incorporated into the 'tidymito' R package under the name `read_dams_activity_csv()`. 
+
+### Using tidymito function
+
+> **Make sure that the metadata file has been updated!**
+
+```{r read-dams-activity, message=FALSE}
+
+dams_activity <- tidymito::read_dams_activity_csv(
+  dir_path = here(path_to_data, "raw_data"), 
+  directory_pattern = "DAMS_b.*", 
+  meta_pattern = ".*meta.*", 
+  meta_col_1 = "monitor", 
+  meta_col_2 = "bloc", 
+  meta_date_col = 3, # numeric indicator of where the date values are in the metafile
+  bloc_name = "DAMS_b", # the link between the metadata bloc value and folder name.
+  numeric_bloc = TRUE
+)
+```
+
+```{r save-imported-data}
+readr::write_csv(
+  x = dams_activity, 
+  file = here(path_to_data, "dams_raw_activity_combined_processed.csv"), 
+  col_names = TRUE
+)
+```
+
+## Formatting data 
+
+### Defining factor levels
+
+```{r factor-levels} 
+dams_activity$genotype <- factor(
+  dams_activity$genotype, 
+  levels = genotype_factor_levels
+)
+
+# set the order of populations
+dams_activity$pop <- factor(
+  dams_activity$pop, 
+  levels = population_factor_levels
+)
+```
+
+### Select dates 
+
+Here we extract data from the second *full day* of the experiment.  I.e: if the DAMs are loaded on Friday evening, we take measurements from 00:00 to 23:59 on the Sunday.
+
+```{r select-experimental-dates}
+
+# extract the experimental dates
+day2_activity <- dams_activity |>
+  filter(
+    date %in% unique(dams_activity$date)[c(3,8,12,17,21,25)]   # change this to desired date
+  )
+
+# check that the correct dates are included
+unique(day2_activity$date)
+
+# check that all monitors were working on the selected days
+unique(day2_activity$status) == 1
+
+# pivot into a wider format
+day2_activity <- day2_activity |>
+  tidyr::pivot_longer(
+    cols = matches("chamber.*"), 
+    names_to = "chamber", 
+    values_to = "counts"
+  )
+
+# convert monitor to a numeric variable
+day2_activity$chamber <- as.numeric(
+  str_remove_all(
+    day2_activity$chamber, 
+    pattern = "[:alpha:]|[:punct:]"
+  )
+)
+```
+
+```{r save-formatted-data}
+readr::write_csv(
+  x = day2_activity, 
+  file = here(path_to_data, "dams_day2_activity_combined_formatted.csv"), 
+  col_names = TRUE
+)
+```

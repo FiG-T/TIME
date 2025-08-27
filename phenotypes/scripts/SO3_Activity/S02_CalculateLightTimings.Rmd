@@ -1,0 +1,107 @@
+---
+title: "Calculate Light Timings"
+author: "FiG-T"
+date: "`r Sys.Date()`"
+header-includes:
+   - \usepackage[default]{sourcesanspro}
+   - \usepackage[T1]{fontenc}
+mainfont: SourceSansPro
+output: 
+  html_document: 
+    keep_md: yes
+    toc: yes
+toc: TRUE
+editor_options:
+  markdown:
+    wrap: 80
+  chunk_output_type: inline
+---
+
+## Introduction 
+
+The DAMs monitors automatically record when the light is on or off - this information can be extracted directly to calibrate when (according to the clock on the computer) the monitors were illuminated. 
+
+This uses the "dams_day2_activity_combined_formatted.csv" file created using the 'S01_ImportFormatRawActivity.Rmd' script. 
+> *Libraries* : Libraries are now listed in the S00_ConfigureSetup/S01_PathsShortcuts.R config file.  This is to make it easier to see which libraries are used across the whole project. 
+
+## Setup
+
+This script calls information in from the project-specific setup files. These contain information on the relative paths to different folders, libraries, factor levels and colour palettes.
+
+```{r configure-setup, echo=FALSE, message=FALSE, warning=FALSE }
+# source all files in configure directory
+for (file in list.files(here::here("phenotypes/scripts/S00_ConfigureSetup"))) {
+  source(here::here("phenotypes/scripts/S00_ConfigureSetup", file), verbose = FALSE)
+}
+rm(file)
+
+# set path to data 
+path_to_data <- here::here("phenotypes/data/D03_Activity/")
+```
+
+## Loading Data
+
+```{r load-day2-data}
+# load csv
+day2_activity <- readr::read_csv(
+  file = here(path_to_data, "dams_day2_activity_combined_formatted.csv"), 
+  col_names = TRUE
+) |>
+  filter(bloc != 4)
+```
+
+## Extract timings 
+
+```{r light-timings}
+
+# select the start time for the recording 
+start <- day2_activity |> 
+  group_by(bloc) |>
+  dplyr::slice_min(time) |>
+  select(time) |> distinct() |> 
+  dplyr::pull(time) 
+
+# determine when the light comes on
+light_on <- day2_activity |> 
+  group_by(bloc) |>
+  filter(light == 1) |>
+  dplyr::slice_min(time) |>
+  select(time) |> distinct() |> 
+  pull(time)
+
+
+# determine when the light turns off
+light_off <- day2_activity |> 
+  group_by(bloc) |>
+  filter(light == 1) |>
+  dplyr::slice_max(time) |>
+  select(bloc, time) |> distinct() |> 
+  pull(time)
+
+# determine the end of the recording window
+end <- day2_activity |> 
+  group_by(bloc) |>
+  dplyr::slice_max(time) |>
+  select(bloc, time) |> distinct() |> 
+  pull(time)
+
+light_timings <- tibble(
+  bloc = c(1,2,3,5,6), # 4 skipped! 
+  start = start,
+  light_on = light_on, 
+  light_off = light_off,
+  end = end
+)
+
+# clean up variables 
+rm(start, light_on, light_off, end)
+
+```
+
+```{r save-light-timings}
+readr::write_csv(
+  x = light_timings, 
+  file = here(path_to_data, "dams_light_timings.csv"), 
+  col_names = TRUE
+)
+```
