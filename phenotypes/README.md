@@ -8,6 +8,17 @@ Given practical limits (mostly in the number of hands and the amount of time ava
 * Female Productivity
 * Activity
 
+## Measurements of 'Fitness' 
+
+### Cold Tolerance
+An initial idea was to conduct an aging assay at each timepoint - this quickly transpired to be pragmatically unfeasible. To speed things along, survival can be assessed after inducing a stress response. After testing a few different approaches and temperatures on the source populations, cold tolerance after extended (25h) exposure to cold (but not freezing) temperatures was chosen given it's suitablity to be conducted at a larger scale and to discriminate between the source populations. 
+
+### (Female) Productivity 
+Female productivity, or the number of adult offspring produced by an individual female (in a given amount of time) is a commonly used measure of fly 'fitness'. Flies were mated in groups but left to lay separately. 
+
+### Activity
+Individual activity (i.e: how much a fly moves) is used as a proxy for 'neuromuscular function' and to test for disruptions to circadian rhythm. 
+
 ## Repository Structure
 This subdirectory is itself split into three more subdirectories: data, results, and scripts.  These each contain the data, outputs, or code respectively for *all three fitness measures*, each with their own folder.  Where possible the directory structure has been mirrored across the data, results, and scripts subdirectories.  
 
